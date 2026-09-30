@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Numerical Analysis Lab</title>
+  <script>
+    // Apply the saved theme before first paint to avoid a flash.
+    try { const t = localStorage.getItem('na-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}
+  </script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/mathjs@14.0.1/lib/browser/math.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1>Numerical Analysis Lab</h1>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="interp" aria-selected="true">Interpolation</button>
+      <button role="tab" data-tab="integ" aria-selected="false">Integration</button>
+      <button role="tab" data-tab="roots" aria-selected="false">Root Finding</button>
+      <button role="tab" data-tab="ivp" aria-selected="false">Initial-Value Problems</button>
+    </nav>
+    <button id="theme-toggle" class="icon-btn" type="button" aria-label="Switch to dark mode" title="Toggle light / dark mode">
+      <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+      <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3M4.6 4.6l2.1 2.1M17.3 17.3l2.1 2.1M4.6 19.4l2.1-2.1M17.3 6.7l2.1-2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+  </header>
+
+  <!-- ===================== INTERPOLATION ===================== -->
+  <main id="tab-interp" class="panel">
+    <form class="controls" id="interp-form" autocomplete="off" onsubmit="return false">
+      <label><span class="lbl">Function <i class="m">f(x)</i></span>
+        <input name="f" value="1/(25x^2+1)" spellcheck="false" class="code">
+      </label>
+      <div class="hint">Use <code>x</code>, <code>^</code>, <code>sqrt</code>, <code>exp</code>, <code>log</code> (natural), <code>sin</code>, <code>pi</code>, …</div>
+      <label><span class="lbl">Preset examples</span>
+        <select name="preset">
+          <option value="">Choose a preset…</option>
+          <option value="sqrtGood">√x, linear, nodes 1/4 and 1</option>
+          <option value="sqrtBad">√x, linear, nodes 0 and 3/4 (singular f″)</option>
+          <option value="expPw">exp(x²), piecewise linear on [0, 1]</option>
+          <option value="runge">Runge function 1/(25x²+1), degree 10</option>
+          <option value="rungeCheb">Runge function, Chebyshev nodes</option>
+          <option value="sinNewton">sin(πx), Newton form, custom nodes</option>
+        </select>
+      </label>
+
+      <label><span class="lbl">Interpolation type</span>
+        <select name="method">
+          <option value="linear">Linear interpolation</option>
+          <option value="piecewise">Piecewise-linear interpolation</option>
+          <option value="degreeN" selected>Degree-N polynomial interpolation</option>
+        </select>
+      </label>
+
+      <fieldset data-show="method=linear">
+        <legend>Nodes</legend>
+        <div class="row">
+          <label><span class="lbl"><i class="m">x_0</i></span><input name="x0" value="1/4"></label>
+          <label><span class="lbl"><i class="m">x_1</i></span><input name="x1" value="1"></label>
+        </div>
+      </fieldset>
+
+      <fieldset data-show="method=piecewise|degreeN">
+        <legend>Interval <i class="m">[a,b]</i></legend>
+        <div class="row">
+          <label><span class="lbl"><i class="m">a</i></span><input name="a" value="-1"></label>
+          <label><span class="lbl"><i class="m">b</i></span><input name="b" value="1"></label>
+        </div>
+      </fieldset>
+
+      <fieldset data-show="method=piecewise">
+        <legend>Mesh <i class="m">a = y_0 < y_1 < \cdots < y_J = b</i></legend>
+        <label><span class="lbl">Mesh type</span>
+          <select name="pwMesh">
+            <option value="uniform">Uniform, h = (b − a)/J</option>
+            <option value="custom">Custom mesh points</option>
+          </select>
+        </label>
+        <label data-show="pwMesh=uniform"><span class="lbl">Number of subintervals <i class="m">J</i></span>
+          <input name="J" type="number" min="1" max="5000" value="8">
+        </label>
+        <label data-show="pwMesh=custom"><span class="lbl">Interior points <i class="m">y_1, \ldots, y_{J-1}</i></span>
+          <input name="pwPoints" value="0.1, 0.25, 0.5, 0.75">
+          <span class="hint">a and b are added automatically</span>
+        </label>
+      </fieldset>
+
+      <fieldset data-show="method=degreeN">
+        <legend>Degree-<i class="m">N</i> options</legend>
+        <label><span class="lbl">Degree <i class="m">N</i> (uses <i class="m">N+1</i> nodes)</span>
+          <input name="N" type="number" min="1" max="40" value="10">
+        </label>
+        <label><span class="lbl">Node choice</span>
+          <select name="nodes">
+            <option value="uniform">Uniformly spaced</option>
+            <option value="chebyshev">Chebyshev points</option>
+            <option value="custom">Custom nodes</option>
+          </select>
+        </label>
+        <label data-show="nodes=custom"><span class="lbl">Nodes <i class="m">x_0, \ldots, x_N</i></span>
+          <input name="customNodes" value="-1, -0.5, 0, 0.5, 1">
+        </label>
+        <label><span class="lbl">Form of the interpolant</span>
+          <select name="form">
+            <option value="lagrange">Lagrange basis functions</option>
+            <option value="newton">Newton divided differences</option>
+          </select>
+        </label>
+        <label class="check" data-show="form=lagrange"><input type="checkbox" name="showBasis"> <span>Plot the basis functions <i class="m">L_j(x)</i></span></label>
+        <label class="check"><input type="checkbox" name="showW"> <span>Plot <i class="m">w_{N+1}(x)</i> with the error</span></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Evaluate at a point</legend>
+        <label><span class="lbl"><i class="m">x^*</i></span><input name="xstar" value="" placeholder="optional, e.g. 0.3"></label>
+      </fieldset>
+    </form>
+
+    <div class="results">
+      <div class="error-box" id="interp-error" hidden></div>
+      <section class="card plot-card"><div id="interp-plot" class="plot"></div></section>
+      <section class="card plot-card"><div id="interp-err-plot" class="plot plot-small"></div></section>
+      <section class="card plot-card" id="interp-basis-card" hidden><div id="interp-basis-plot" class="plot plot-small"></div></section>
+      <div id="interp-cards" class="cards"></div>
+    </div>
+  </main>
+
+  <!-- ===================== INTEGRATION ===================== -->
+  <main id="tab-integ" class="panel" hidden>
+    <form class="controls" id="integ-form" autocomplete="off" onsubmit="return false">
+      <label><span class="lbl">Integrand <i class="m">f(x)</i></span>
+        <input name="f" value="exp(x^2)" spellcheck="false" class="code">
+      </label>
+      <div class="hint">Use <code>x</code>, <code>^</code>, <code>sqrt</code>, <code>exp</code>, <code>log</code> (natural), <code>sin</code>, <code>pi</code>, …</div>
+      <label><span class="lbl">Preset examples</span>
+        <select name="preset">
+          <option value="">Choose a preset…</option>
+          <option value="sqrtTrap">√x on [1/4, 1], trapezium rule</option>
+          <option value="sqrtSimp">√x on [1/4, 1], Simpson's rule</option>
+          <option value="dop">x⁴ on [0, 1], Simpson's rule (degree of precision)</option>
+          <option value="comp">exp(x²) on [0, 1], composite Simpson's</option>
+          <option value="sqrtComp">√x on [0, 1], composite trapezium (singular derivative)</option>
+          <option value="sinComp">sin(x) on [0, π], composite trapezium</option>
+        </select>
+      </label>
+
+      <label><span class="lbl">Interval</span>
+        <select name="interval">
+          <option value="unit">Reference interval [0, 1]</option>
+          <option value="general">General interval [a, b]</option>
+        </select>
+      </label>
+      <fieldset data-show="interval=general">
+        <legend>Interval <i class="m">[a,b]</i></legend>
+        <div class="row">
+          <label><span class="lbl"><i class="m">a</i></span><input name="a" value="1/4"></label>
+          <label><span class="lbl"><i class="m">b</i></span><input name="b" value="1"></label>
+        </div>
+      </fieldset>
+
+      <label><span class="lbl">Rule type</span>
+        <select name="kind">
+          <option value="single">Newton–Cotes rule (single)</option>
+          <option value="composite">Composite rule</option>
+        </select>
+      </label>
+
+      <label><span class="lbl">Newton–Cotes rule <i class="m">Q_N</i></span>
+        <select name="N">
+          <option value="1">N = 1: Trapezium rule</option>
+          <option value="2">N = 2: Simpson's rule</option>
+          <option value="3">N = 3: Simpson's 3/8 rule</option>
+          <option value="4">N = 4: Boole's rule</option>
+          <option value="5">N = 5</option>
+          <option value="6">N = 6</option>
+          <option value="7">N = 7</option>
+          <option value="8">N = 8</option>
+          <option value="9">N = 9</option>
+          <option value="10">N = 10</option>
+        </select>
+      </label>
+
+      <fieldset data-show="kind=composite">
+        <legend>Mesh <i class="m">a = y_0 < y_1 < \cdots < y_J = b</i></legend>
+        <label><span class="lbl">Mesh type</span>
+          <select name="mesh">
+            <option value="uniform">Uniform, h = (b − a)/J</option>
+            <option value="custom">Custom mesh points</option>
+          </select>
+        </label>
+        <label data-show="mesh=uniform"><span class="lbl">Number of subintervals <i class="m">J</i></span>
+          <input name="J" type="number" min="1" max="5000" value="4">
+        </label>
+        <label data-show="mesh=custom"><span class="lbl">Interior points <i class="m">y_1, \ldots, y_{J-1}</i></span>
+          <input name="meshPoints" value="0.1, 0.3, 0.6">
+          <span class="hint">a and b are added automatically</span>
+        </label>
+      </fieldset>
+
+      <label class="check"><input type="checkbox" name="shade" checked> <span>Shade the area under the interpolant <i class="m">p_N</i></span></label>
+    </form>
+
+    <div class="results">
+      <div class="error-box" id="integ-error" hidden></div>
+      <section class="card plot-card"><div id="integ-plot" class="plot"></div></section>
+      <div id="integ-cards" class="cards"></div>
+    </div>
+  </main>
+
+  <!-- ===================== ROOT FINDING ===================== -->
+  <main id="tab-roots" class="panel" hidden>
+    <form class="controls" id="roots-form" autocomplete="off" onsubmit="return false">
+      <label><span class="lbl">Preset examples</span>
+        <select name="preset">
+          <option value="">Choose a preset…</option>
+          <option value="cubicBis">x³ + 4x² − 10, bisection on [1, 2]</option>
+          <option value="cubicG3">x³ + 4x² − 10 via g(x) = (10/(4+x))^½ (converges)</option>
+          <option value="cubicG2">x³ + 4x² − 10 via g(x) = ½(10 − x³)^½ (fails)</option>
+          <option value="cubicG1">x³ + 4x² − 10 via g(x) = x − x³ − 4x² + 10 (diverges)</option>
+          <option value="cos">x = cos(x), fixed-point iteration</option>
+          <option value="sinNewton">sin(x) = 0, Newton from x₀ = 3</option>
+          <option value="sqrt2">x² − 2 = 0, Newton from x₀ = 1</option>
+          <option value="double">(x − 1)² = 0, Newton (double root)</option>
+          <option value="cubicNewton">x³ + 4x² − 10, Newton from x₀ = 1</option>
+        </select>
+      </label>
+
+      <label><span class="lbl">Method</span>
+        <select name="method">
+          <option value="bisection">Bisection method</option>
+          <option value="fixed">Fixed-point iteration</option>
+          <option value="newton" selected>Newton's method</option>
+        </select>
+      </label>
+
+      <label data-show="method=bisection|newton"><span class="lbl">Solve <i class="m">f(x) = 0</i> where <i class="m">f(x)</i> =</span>
+        <input name="f" value="x^3 + 4x^2 - 10" spellcheck="false" class="code">
+      </label>
+      <label data-show="method=fixed"><span class="lbl">Iterate <i class="m">x_{n+1} = g(x_n)</i> where <i class="m">g(x)</i> =</span>
+        <input name="g" value="sqrt(10/(4+x))" spellcheck="false" class="code">
+      </label>
+      <label data-show="method=fixed"><span class="lbl">Original equation <i class="m">f(x) = 0</i> (optional)</span>
+        <input name="fOrig" value="x^3 + 4x^2 - 10" spellcheck="false" class="code" placeholder="optional">
+      </label>
+
+      <fieldset>
+        <legend><span data-show="method=bisection">Starting bracket</span><span data-show="method=fixed">Interval for the fixed-point theorem</span><span data-show="method=newton">Plot window</span> <i class="m">[a,b]</i></legend>
+        <div class="row">
+          <label><span class="lbl"><i class="m">a</i></span><input name="a" value="1"></label>
+          <label><span class="lbl"><i class="m">b</i></span><input name="b" value="2"></label>
+        </div>
+      </fieldset>
+
+      <label data-show="method=fixed|newton"><span class="lbl">Initial guess <i class="m">x_0</i></span>
+        <input name="x0" value="1">
+      </label>
+
+      <fieldset>
+        <legend>Stopping criteria</legend>
+        <div class="row">
+          <label><span class="lbl">Tolerance</span><input name="tol" value="1e-12"></label>
+          <label><span class="lbl">Max iterations</span><input name="maxIter" type="number" min="1" max="500" value="50"></label>
+        </div>
+      </fieldset>
+    </form>
+
+    <div class="results">
+      <div class="error-box" id="roots-error" hidden></div>
+      <section class="card plot-card">
+        <div class="step-control">
+          <label for="roots-step">Show iterations up to <b id="roots-step-label">n = 0</b></label>
+          <input type="range" id="roots-step" min="0" max="1" value="1">
+        </div>
+        <div id="roots-plot" class="plot"></div>
+      </section>
+      <section class="card plot-card"><div id="roots-conv-plot" class="plot plot-small"></div></section>
+      <div id="roots-cards" class="cards"></div>
+    </div>
+  </main>
+
+  <!-- ===================== IVPs ===================== -->
+  <main id="tab-ivp" class="panel" hidden>
+    <form class="controls" id="ivp-form" autocomplete="off" onsubmit="return false">
+      <label><span class="lbl">Preset examples</span>
+        <select name="preset">
+          <option value="">Choose a preset…</option>
+          <option value="ysq">y′ = y², y(0) = 1 (blows up at t = 1)</option>
+          <option value="decay">y′ = −y, exponential decay</option>
+          <option value="logistic">y′ = y(1 − y), logistic growth</option>
+          <option value="gauss">y′ = −2ty, time-dependent</option>
+          <option value="shm">Harmonic oscillator y″ = −y (system)</option>
+          <option value="pendulum">Pendulum θ″ = −sin θ (system)</option>
+        </select>
+      </label>
+
+      <label><span class="lbl">Problem type</span>
+        <select name="dim">
+          <option value="1">Single equation</option>
+          <option value="2">System of two equations</option>
+        </select>
+      </label>
+
+      <fieldset data-show="dim=1">
+        <legend>Problem <i class="m">y' = f(y,t),\; y(0) = y_0</i></legend>
+        <label><span class="lbl"><i class="m">f(y,t)</i></span><input name="f" value="y^2" class="code" spellcheck="false"></label>
+        <label><span class="lbl"><i class="m">y_0</i></span><input name="y0" value="1"></label>
+        <label><span class="lbl">Exact solution <i class="m">y(t)</i> (optional)</span><input name="exact" value="1/(1-t)" class="code" spellcheck="false" placeholder="optional"></label>
+      </fieldset>
+
+      <fieldset data-show="dim=2">
+        <legend>System <i class="m">\mathbf{y}' = \mathbf{f}(\mathbf{y},t)</i></legend>
+        <label><span class="lbl"><i class="m">y_1' = f_1(y_1,y_2,t)</i></span><input name="f1" value="y2" class="code" spellcheck="false"></label>
+        <label><span class="lbl"><i class="m">y_2' = f_2(y_1,y_2,t)</i></span><input name="f2" value="-sin(y1)" class="code" spellcheck="false"></label>
+        <div class="row">
+          <label><span class="lbl"><i class="m">y_1(0)</i></span><input name="y10" value="1"></label>
+          <label><span class="lbl"><i class="m">y_2(0)</i></span><input name="y20" value="0"></label>
+        </div>
+        <label><span class="lbl">Exact <i class="m">y_1(t)</i> (optional)</span><input name="exact1" value="" class="code" spellcheck="false" placeholder="optional"></label>
+        <label><span class="lbl">Exact <i class="m">y_2(t)</i> (optional)</span><input name="exact2" value="" class="code" spellcheck="false" placeholder="optional"></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Time stepping</legend>
+        <div class="row">
+          <label><span class="lbl">Final time <i class="m">T</i></span><input name="T" value="1/2"></label>
+          <label><span class="lbl">Step size <i class="m">h</i></span><input name="h" value="1/8"></label>
+        </div>
+      </fieldset>
+
+      <label><span class="lbl">Method</span>
+        <select name="method">
+          <option value="euler">Euler's method</option>
+          <option value="cn">Crank–Nicolson (trapezoidal)</option>
+          <option value="improved">Improved Euler</option>
+          <option value="rk4">Runge–Kutta 4 (RK4)</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" name="compare"> <span>Compare all four methods on the plots</span></label>
+    </form>
+
+    <div class="results">
+      <div class="error-box" id="ivp-error" hidden></div>
+      <section class="card plot-card"><div id="ivp-plot" class="plot"></div></section>
+      <section class="card plot-card" id="ivp-phase-card" hidden><div id="ivp-phase-plot" class="plot"></div></section>
+      <section class="card plot-card"><div id="ivp-err-plot" class="plot plot-small"></div></section>
+      <div id="ivp-cards" class="cards"></div>
+    </div>
+  </main>
+
+  <script src="js/ui.js"></script>
+  <script src="js/expr.js"></script>
+  <script src="js/numerics.js"></script>
+  <script src="js/solvers.js"></script>
+  <script src="js/interpolation.js"></script>
+  <script src="js/integration.js"></script>
+  <script src="js/roots.js"></script>
+  <script src="js/ivp.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
