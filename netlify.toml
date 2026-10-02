@@ -1,0 +1,9 @@
+# The app lives in the "Numerical Lab" folder, so publish that folder
+# and serve Numerical_Workshop.html as the home page.
+[build]
+  publish = "Numerical Lab"
+
+[[redirects]]
+  from = "/"
+  to = "/Numerical_Workshop.html"
+  status = 200
