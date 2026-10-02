@@ -3,7 +3,7 @@ Interactive lab that demonstrates some of the main topics that make the foundati
 
 ## How to use
 You will need to download **all files**: the HTML, the JS and the CSS code files all into one folder on your device then you can run the program by opening the html file if you want to run this locally on your device. 
-You can also see this via this link bellow
+You can also see this via this link that will take you to a hosted version of the project.
 https://lively-pastelito-c04815.netlify.app
 
 ## Functions
