@@ -8,7 +8,7 @@ You will need to download all files: the HTML, the JS and the CSS code files all
 
 This lab allows you to learn about 4 fundamental parts of Numerical Analysis:
 
--Interpolation
--Integration
--Root-Finding
--Inital-Value-Problems
+- Interpolation
+- Integration
+- Root-Finding
+- Inital-Value-Problems
