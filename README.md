@@ -12,3 +12,5 @@ This lab allows you to learn about 4 fundamental parts of Numerical Analysis:
 - Integration
 - Root-Finding
 - Inital-Value-Problems
+
+All these functions give you the ability to input your own functions or choose from preset examples that show happenings of things fundamental to the topic
